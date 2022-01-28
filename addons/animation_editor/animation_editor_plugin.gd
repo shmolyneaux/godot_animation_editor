@@ -4,14 +4,13 @@ extends EditorPlugin
 var enabled = false
 var visible = false
 var camera = null
+var active_animation_player = null
 
 var _editor_menu_button_scene = preload("animation_editor_menu.tscn")
 var _editor_panel_scene = preload("animation_editor_panel.tscn")
 
 var _editor_menu_button = null
 var _editor_panel = null
-
-var active_animation_player = null
 
 func handles(object):
 	print("handles(", object, ")")
@@ -71,17 +70,12 @@ func forward_spatial_draw_over_viewport(overlay: Control):
 		overlay.add_child(_editor_panel)
 		print("editor panel is now ", _editor_panel)
 
-	#overlay.draw_circle(overlay.get_local_mouse_position(), 64, Color.white)
-	#print(overlay.get_rect())
-
 
 func forward_spatial_gui_input(camera, event):
-	var consumed = false
-
 	self.camera = camera
-
-	return consumed
-
+	if _editor_panel:
+		return _editor_panel.process_input(event)
+	return false
 
 func _set_enabled(val):
 	enabled = val

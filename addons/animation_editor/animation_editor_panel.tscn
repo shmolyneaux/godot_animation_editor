@@ -3,24 +3,28 @@
 [ext_resource path="res://addons/animation_editor/animation_editor_panel.gd" type="Script" id=1]
 [ext_resource path="res://addons/animation_editor/Canvas.tscn" type="PackedScene" id=2]
 
-[node name="Control" type="Panel"]
-modulate = Color( 1, 1, 1, 0.501961 )
-anchor_bottom = 1.0
-margin_right = 731.0
+[node name="Control" type="Control"]
+self_modulate = Color( 1, 1, 1, 0.235294 )
+margin_left = 10.0
+margin_top = 50.0
+margin_right = 262.0
+margin_bottom = 535.0
 script = ExtResource( 1 )
 __meta__ = {
 "_edit_use_anchors_": false
 }
 
 [node name="VBoxContainer" type="VBoxContainer" parent="."]
-anchor_right = 1.0
-anchor_bottom = 1.0
+margin_left = 10.0
+margin_top = 10.0
+margin_right = 252.0
+margin_bottom = 485.0
 __meta__ = {
 "_edit_use_anchors_": false
 }
 
 [node name="Button" type="Button" parent="VBoxContainer"]
-margin_right = 731.0
+margin_right = 242.0
 margin_bottom = 20.0
 text = "Press me"
 __meta__ = {
@@ -29,60 +33,67 @@ __meta__ = {
 
 [node name="Label" type="Label" parent="VBoxContainer"]
 margin_top = 24.0
-margin_right = 731.0
+margin_right = 242.0
 margin_bottom = 38.0
 text = "Animation Editor"
 __meta__ = {
 "_edit_use_anchors_": false
 }
 
-[node name="Label2" type="Label" parent="VBoxContainer"]
+[node name="HSeparator" type="HSeparator" parent="VBoxContainer"]
 margin_top = 42.0
-margin_right = 731.0
-margin_bottom = 56.0
+margin_right = 242.0
+margin_bottom = 46.0
+
+[node name="Label2" type="Label" parent="VBoxContainer"]
+margin_top = 50.0
+margin_right = 242.0
+margin_bottom = 64.0
 text = "Some Bones?"
 
 [node name="Label3" type="Label" parent="VBoxContainer"]
-margin_top = 60.0
-margin_right = 731.0
-margin_bottom = 74.0
+margin_top = 68.0
+margin_right = 242.0
+margin_bottom = 82.0
 text = "Torso"
 
 [node name="Label4" type="Label" parent="VBoxContainer"]
-margin_top = 78.0
-margin_right = 731.0
-margin_bottom = 92.0
+margin_top = 86.0
+margin_right = 242.0
+margin_bottom = 100.0
 text = "Core"
 
 [node name="Label5" type="Label" parent="VBoxContainer"]
-margin_top = 96.0
-margin_right = 731.0
-margin_bottom = 110.0
+margin_top = 104.0
+margin_right = 242.0
+margin_bottom = 118.0
 text = "etc."
 
 [node name="Label6" type="Label" parent="VBoxContainer"]
-margin_top = 114.0
-margin_right = 731.0
-margin_bottom = 128.0
+margin_top = 122.0
+margin_right = 242.0
+margin_bottom = 136.0
 
 [node name="Label7" type="Label" parent="VBoxContainer"]
-margin_top = 132.0
-margin_right = 731.0
-margin_bottom = 146.0
+margin_top = 140.0
+margin_right = 242.0
+margin_bottom = 154.0
 
 [node name="Label8" type="Label" parent="VBoxContainer"]
-margin_top = 150.0
-margin_right = 731.0
-margin_bottom = 164.0
+margin_top = 158.0
+margin_right = 242.0
+margin_bottom = 172.0
 
 [node name="Label9" type="Label" parent="VBoxContainer"]
-margin_top = 168.0
-margin_right = 731.0
-margin_bottom = 182.0
+margin_top = 176.0
+margin_right = 242.0
+margin_bottom = 190.0
 
 [node name="Label10" type="Label" parent="VBoxContainer"]
-margin_top = 186.0
-margin_right = 731.0
-margin_bottom = 200.0
+margin_top = 194.0
+margin_right = 242.0
+margin_bottom = 225.0
+text = "last
+"
 
 [node name="Canvas" parent="." instance=ExtResource( 2 )]
