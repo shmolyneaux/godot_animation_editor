@@ -41,9 +41,11 @@ func redraw():
 				var point_up_button = Button.new()
 				point_up_button.text = "Rotate " + prop_name
 				if _active_bone == prop_path:
-					point_up_button.modulate = Color.red
+					point_up_button.modulate = Color.greenyellow
 				$VBoxContainer.add_child(point_up_button)
 				point_up_button.connect("pressed", self, "set_active_bone", [prop_path])
+			elif prop_node == null:
+				add_label("Broken Reference to " + anim_player.root_node + "/" + prop_path)
 			else:
 				var prop_value = prop_node.get(prop_name)
 				add_label("UNEDITABLE " + prop_name + ": " + str(prop_value))
@@ -201,10 +203,6 @@ func _draw():
 			_active_bone
 		)
 
-		# For some reason the screen_pos moves down in the y axis as the camera zooms out.
-		# The "global_pos" remains the same, but for some reason it seems like the camera
-		# used for `unproject_position` uses a different transform than the actual camera
-		# used in the editor.
 		var global_pos = res["skeleton"].global_transform * res["skeleton"].get_bone_global_pose(res["bone_idx"]).origin
 		var screen_pos = camera.unproject_position(global_pos)
 
