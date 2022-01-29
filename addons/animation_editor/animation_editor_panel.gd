@@ -34,7 +34,7 @@ func redraw():
 	if anim:
 		for track_idx in range(anim.get_track_count()):
 			var prop_path = anim.track_get_path(track_idx)
-			var prop_node = anim_player.get_parent().get_node(prop_path)
+			var prop_node = anim_player.get_node(anim_player.root_node).get_node(prop_path)
 			var prop_name = prop_path.get_concatenated_subnames()
 			if prop_node is Skeleton:
 				var bone_idx = prop_node.find_bone(prop_name)
@@ -79,7 +79,7 @@ func _accept_rotation_update():
 		return
 
 	var res = AnimationEditorUtils.skeleton_bone_from_path(
-		anim_player.get_parent(),
+		anim_player.get_node(anim_player.root_node),
 		_active_bone
 	)
 	var current_xform = res["skeleton"].get_bone_pose(res["bone_idx"])
@@ -106,7 +106,7 @@ func process_input(event):
 							print("entering rotating state")
 
 							var res = AnimationEditorUtils.skeleton_bone_from_path(
-								anim_player.get_parent(),
+								anim_player.get_node(anim_player.root_node),
 								_active_bone
 							)
 
@@ -138,7 +138,7 @@ func process_input(event):
 						consumed = true
 
 						var res = AnimationEditorUtils.skeleton_bone_from_path(
-							anim_player.get_parent(),
+							anim_player.get_node(anim_player.root_node),
 							_active_bone
 						)
 
@@ -156,7 +156,7 @@ func process_input(event):
 
 			elif event is InputEventMouseMotion:
 				var res = AnimationEditorUtils.skeleton_bone_from_path(
-					anim_player.get_parent(),
+					anim_player.get_node(anim_player.root_node),
 					_active_bone
 				)
 
@@ -169,7 +169,7 @@ func process_input(event):
 
 				var rotation_amount = current_angle.angle_to(last_angle)
 
-				var skel: Skeleton = anim_player.get_parent().get_node(_state_info["active_bone"])
+				var skel: Skeleton = anim_player.get_node(anim_player.root_node).get_node(_state_info["active_bone"])
 				var prop_name = _state_info["active_bone"].get_concatenated_subnames()
 				var bone_idx = skel.find_bone(prop_name)
 
@@ -197,7 +197,7 @@ func _process(delta):
 func _draw():
 	if anim_player and _active_bone and _state == EditorState.ROTATING:
 		var res = AnimationEditorUtils.skeleton_bone_from_path(
-			anim_player.get_parent(),
+			anim_player.get_node(anim_player.root_node),
 			_active_bone
 		)
 
