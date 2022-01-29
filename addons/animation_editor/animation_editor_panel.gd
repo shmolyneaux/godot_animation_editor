@@ -161,12 +161,11 @@ func process_input(event):
 				)
 
 				var bone_screen_pos = camera.unproject_position(
-					res["skeleton"].get_bone_global_pose(res["bone_idx"]).origin
+					res["skeleton"].global_transform * res["skeleton"].get_bone_global_pose(res["bone_idx"]).origin
 				)
 				var last_angle = _state_info["last_mouse_pos"] - bone_screen_pos
 				var current_angle = event.position - bone_screen_pos
 				_state_info["last_mouse_pos"] = event.position
-
 
 				var rotation_amount = current_angle.angle_to(last_angle)
 
@@ -181,10 +180,10 @@ func process_input(event):
 				if parent != -1:
 					inverse_parent_global = skel.get_bone_global_pose(parent).affine_inverse()
 
-				var global_pose = skel.get_bone_global_pose(bone_idx)
+				var global_pose = res["skeleton"].global_transform * skel.get_bone_global_pose(bone_idx)
 				global_pose.basis = global_pose.basis.rotated(camera.get_global_transform().basis.z, rotation_amount)
 
-				var local_pose = inverse_rest * inverse_parent_global * global_pose
+				var local_pose = inverse_rest * inverse_parent_global * res["skeleton"].global_transform.inverse() * global_pose
 
 				skel.set_bone_pose(bone_idx, local_pose)
 
@@ -202,16 +201,15 @@ func _draw():
 			_active_bone
 		)
 
-		#var global_pos = res["skeleton"].global_transform * res["skeleton"].get_bone_global_pose(res["bone_idx"]).origin
-		#var screen_pos = camera.unproject_position(global_pos)
-
-		var global_pos = res["skeleton"].get_bone_global_pose(res["bone_idx"]).origin
+		# For some reason the screen_pos moves down in the y axis as the camera zooms out.
+		# The "global_pos" remains the same, but for some reason it seems like the camera
+		# used for `unproject_position` uses a different transform than the actual camera
+		# used in the editor.
+		var global_pos = res["skeleton"].global_transform * res["skeleton"].get_bone_global_pose(res["bone_idx"]).origin
 		var screen_pos = camera.unproject_position(global_pos)
 
-		# Your draw commands here
 		draw_line(_state_info["last_mouse_pos"], screen_pos, Color.red)
-
-		draw_string(default_font, Vector2(64, 64), str(_state_info["last_mouse_pos"]))
+		draw_string(get_default_font(), Vector2(64, 64), str(_state_info["last_mouse_pos"]))
 
 
 func add_label(text):
@@ -224,6 +222,11 @@ func clear_labels():
 	for node in $VBoxContainer.get_children():
 		node.queue_free()
 
+
+func get_default_font():
+	if not default_font:
+		default_font = Control.new().get_font("font")
+	return default_font
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
