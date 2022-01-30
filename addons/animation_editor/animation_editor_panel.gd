@@ -5,13 +5,15 @@ var camera = null
 var default_font = null
 var anim_player = null setget set_anim_player
 
-enum EditorState {IDLE, ROTATING}
+enum EditorState {IDLE, ROTATING, TRANSLATING}
 var _state = EditorState.IDLE
 var _state_info = {} # Arbitrary values that only make sense for the current state
-var _last_mouse_pos = Vector2()
-var _active_bone = null
 
-var _rng = RandomNumberGenerator.new()
+# Viewport-space position of the mouse
+var _last_mouse_pos = Vector2()
+
+# Currently select path to bone (relative to animation player root node)
+var _active_bone = null
 
 
 class UIBone:
@@ -95,7 +97,19 @@ func set_active_bone(prop_path):
 	redraw()
 
 
-func _accept_rotation_update():
+func _revert_transform_update():
+	print("entering idle state")
+	_state = EditorState.IDLE
+
+	var res = AnimationEditorUtils.skeleton_bone_from_path(
+		anim_player.get_node(anim_player.root_node),
+		_active_bone
+	)
+
+	res["skeleton"].set_bone_pose(res["bone_idx"], _state_info["active_bone_starting_xform"])
+
+
+func _accept_transform_update():
 	print("entering idle state")
 	_state = EditorState.IDLE
 
@@ -131,6 +145,20 @@ func _accept_rotation_update():
 		current_xform.basis.get_scale()
 	)
 
+
+func _start_transform_operation(new_state):
+	var res = AnimationEditorUtils.skeleton_bone_from_path(
+		anim_player.get_node(anim_player.root_node),
+		_active_bone
+	)
+
+	_state = new_state
+	_state_info["starting_mouse_pos"] = _last_mouse_pos
+	_state_info["last_mouse_pos"] = _last_mouse_pos
+	_state_info["active_bone"] = _active_bone
+	_state_info["active_bone_starting_xform"] = res["skeleton"].get_bone_pose(res["bone_idx"])
+
+
 func process_input(event):
 	var consumed = false
 	if not visible:
@@ -139,31 +167,20 @@ func process_input(event):
 	match _state:
 		EditorState.IDLE:
 			if event is InputEventKey and event.pressed:
+				# Check if the user is starting a new operation
 				match event.scancode:
+					KEY_G:
+						if _active_bone:
+							_start_transform_operation(EditorState.TRANSLATING)
+							consumed = true
+
 					KEY_R:
 						if _active_bone:
-							print("entering rotating state")
-
-							var res = AnimationEditorUtils.skeleton_bone_from_path(
-								anim_player.get_node(anim_player.root_node),
-								_active_bone
-							)
-
-							var bone_screen_pos = camera.unproject_position(
-								res["skeleton"].get_bone_global_pose(res["bone_idx"]).origin
-							)
-
-							_state = EditorState.ROTATING
-							_state_info["starting_mouse_pos"] = _last_mouse_pos
-							_state_info["last_mouse_pos"] = _last_mouse_pos
-							_state_info["active_bone"] = _active_bone
-							_state_info["active_bone_starting_xform"] = res["skeleton"].get_bone_pose(res["bone_idx"])
-
+							_start_transform_operation(EditorState.ROTATING)
 							consumed = true
-						else:
-							print("Can't start rotating when there's no active bone")
 
 			elif event is InputEventMouseButton and event.pressed:
+				# Check if the user is selecting a bone
 				match event.button_index:
 					BUTTON_LEFT:
 						var ui_bone = _nearest_ui_bone(event.position, 20.0)
@@ -176,32 +193,98 @@ func process_input(event):
 							_active_bone = null
 
 			elif event is InputEventMouseMotion:
+				# Maintain the viewport-space position of the mouse
 				_last_mouse_pos = event.position
+
+		EditorState.TRANSLATING:
+			if event is InputEventKey and event.pressed:
+				match event.scancode:
+					# Revert the change
+					KEY_ESCAPE:
+						_revert_transform_update()
+						consumed = true
+
+					KEY_ENTER, KEY_KP_ENTER:
+						_accept_transform_update()
+						consumed = true
+
+			elif event is InputEventMouseButton and event.pressed:
+				match event.button_index:
+					BUTTON_LEFT:
+						_accept_transform_update()
+						consumed = true
+
+			elif event is InputEventMouseMotion:
+				# Screen-space position change
+				var move_delta = _state_info["last_mouse_pos"] - event.position
+
+				# Get the global bone transform and relevant transforms for going
+				# back to local pose
+
+				var res = AnimationEditorUtils.skeleton_bone_from_path(
+					anim_player.get_node(anim_player.root_node),
+					_active_bone
+				)
+
+				var skel: Skeleton = anim_player.get_node(anim_player.root_node).get_node(_state_info["active_bone"])
+				var prop_name = _state_info["active_bone"].get_concatenated_subnames()
+				var bone_idx = skel.find_bone(prop_name)
+
+				var inverse_rest = skel.get_bone_rest(bone_idx).affine_inverse()
+
+				var parent = skel.get_bone_parent(bone_idx)
+				var inverse_parent_global = Transform.IDENTITY
+				if parent != -1:
+					inverse_parent_global = skel.get_bone_global_pose(parent).affine_inverse()
+
+				var global_pose = res["skeleton"].global_transform * skel.get_bone_global_pose(bone_idx)
+
+				# Get the plane parallel to the camera that intersects with the
+				# current origin of the bone. The origin of the bone is translated
+				# along this plane.
+				var camera_normal = camera.transform.basis.z
+				var a = camera_normal.x
+				var b = camera_normal.y
+				var c = camera_normal.z
+				var d = a*global_pose.origin.x + b*global_pose.origin.y + c*global_pose.origin.z
+				var plane = Plane(a, b, c, d)
+
+				# Determine the world-space translation for moving the bone origin
+				var old_mouse_position = plane.intersects_ray(
+					camera.project_ray_origin(_state_info["last_mouse_pos"]),
+					camera.project_ray_normal(_state_info["last_mouse_pos"])
+				)
+				var new_mouse_position = plane.intersects_ray(
+					camera.project_ray_origin(event.position),
+					camera.project_ray_normal(event.position)
+				)
+				var translation_amount = new_mouse_position - old_mouse_position
+				if Input.is_key_pressed(KEY_SHIFT):
+					translation_amount *= 0.1
+
+				global_pose.origin = global_pose.origin + translation_amount
+
+				var local_pose = inverse_rest * inverse_parent_global * res["skeleton"].global_transform.inverse() * global_pose
+
+				skel.set_bone_pose(bone_idx, local_pose)
+				_state_info["last_mouse_pos"] = event.position
 
 		EditorState.ROTATING:
 			if event is InputEventKey and event.pressed:
 				match event.scancode:
 					# Revert the change
 					KEY_ESCAPE:
-						print("entering idle state")
-						_state = EditorState.IDLE
+						_revert_transform_update()
 						consumed = true
 
-						var res = AnimationEditorUtils.skeleton_bone_from_path(
-							anim_player.get_node(anim_player.root_node),
-							_active_bone
-						)
-
-						res["skeleton"].set_bone_pose(res["bone_idx"], _state_info["active_bone_starting_xform"])
-
 					KEY_ENTER, KEY_KP_ENTER:
-						_accept_rotation_update()
+						_accept_transform_update()
 						consumed = true
 
 			elif event is InputEventMouseButton and event.pressed:
 				match event.button_index:
 					BUTTON_LEFT:
-						_accept_rotation_update()
+						_accept_transform_update()
 						consumed = true
 
 			elif event is InputEventMouseMotion:
@@ -215,7 +298,6 @@ func process_input(event):
 				)
 				var last_angle = _state_info["last_mouse_pos"] - bone_screen_pos
 				var current_angle = event.position - bone_screen_pos
-				_state_info["last_mouse_pos"] = event.position
 
 				var rotation_amount = current_angle.angle_to(last_angle)
 				if Input.is_key_pressed(KEY_SHIFT):
@@ -238,6 +320,7 @@ func process_input(event):
 				var local_pose = inverse_rest * inverse_parent_global * res["skeleton"].global_transform.inverse() * global_pose
 
 				skel.set_bone_pose(bone_idx, local_pose)
+				_state_info["last_mouse_pos"] = event.position
 
 	return consumed
 
@@ -331,5 +414,3 @@ func get_default_font():
 func _ready():
 	visible = false
 	default_font = Control.new().get_font("font")
-	_rng.randomize()
-
