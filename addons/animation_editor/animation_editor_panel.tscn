@@ -6,8 +6,6 @@
 [node name="Control" type="Control"]
 visible = false
 self_modulate = Color( 1, 1, 1, 0.235294 )
-margin_right = 262.0
-margin_bottom = 535.0
 script = ExtResource( 1 )
 __meta__ = {
 "_edit_use_anchors_": false
@@ -16,8 +14,8 @@ __meta__ = {
 [node name="VBoxContainer" type="VBoxContainer" parent="."]
 margin_left = 20.0
 margin_top = 60.0
-margin_right = 252.0
-margin_bottom = 485.0
+margin_right = 273.0
+margin_bottom = 74.0
 __meta__ = {
 "_edit_use_anchors_": false
 }

@@ -13,6 +13,20 @@ var _active_bone = null
 
 var _rng = RandomNumberGenerator.new()
 
+
+class UIBone:
+	var start: Vector2 = Vector2()
+	var end: Vector2 = Vector2()
+	var name = ""
+	var path = null
+
+	func _init(new_bone_start, new_bone_end, new_name, new_path):
+		self.start = new_bone_start
+		self.end = new_bone_end
+		self.name = new_name
+		self.path = new_path
+
+
 func set_anim_player(new_anim_player):
 	anim_player = new_anim_player
 	redraw()
@@ -25,32 +39,55 @@ func redraw():
 
 	clear_labels()
 
-	# TODO: add armature picker
-
+	var bones_under_root_button = Button.new()
+	bones_under_root_button.text = "Add Bones Under Root"
+	bones_under_root_button.connect("pressed", self, "add_bones_under_root")
+	$VBoxContainer.add_child(bones_under_root_button)
 	$VBoxContainer.add_child(HSeparator.new())
 
+
+# Recurse through all the children of the root node of the animation player, and
+# add transform tracks for all the bones in all the armatures that are found
+func add_bones_under_root():
+	if not anim_player:
+		print("No anim player selected")
+		return
+
 	var current_animation = anim_player.assigned_animation
-	var anim = anim_player.get_animation(current_animation)
-	if anim:
-		for track_idx in range(anim.get_track_count()):
-			var prop_path = anim.track_get_path(track_idx)
-			var prop_node = anim_player.get_node(anim_player.root_node).get_node(prop_path)
-			var prop_name = prop_path.get_concatenated_subnames()
-			if prop_node is Skeleton:
-				var bone_idx = prop_node.find_bone(prop_name)
-				var point_up_button = Button.new()
-				point_up_button.text = "Rotate " + prop_name
-				if _active_bone == prop_path:
-					point_up_button.modulate = Color.greenyellow
-				$VBoxContainer.add_child(point_up_button)
-				point_up_button.connect("pressed", self, "set_active_bone", [prop_path])
-			elif prop_node == null:
-				add_label("Broken Reference to " + anim_player.root_node + "/" + prop_path)
+	var anim: Animation = anim_player.get_animation(current_animation)
+	if not anim:
+		print("No animation on anim player")
+		return
+
+	var anim_track_path_set = {}
+	for track_idx in range(anim.get_track_count()):
+		var track_path = str(anim.track_get_path(track_idx))
+		anim_track_path_set[track_path] = 1
+
+	var root = anim_player.get_node(anim_player.root_node)
+	var skeletons = skeletons_under_node(root)
+	for skeleton in skeletons:
+		var skeleton_path = root.get_path_to(skeleton)
+		for bone_idx in skeleton.get_bone_count():
+			var track_path = str(skeleton_path) + ":" + skeleton.get_bone_name(bone_idx)
+			if anim_track_path_set.has(track_path):
+				print(track_path, " already in player")
 			else:
-				var prop_value = prop_node.get(prop_name)
-				add_label("UNEDITABLE " + prop_name + ": " + str(prop_value))
-	else:
-		print("Could not get assigned animation: ", current_animation)
+				var track_idx = anim.add_track(Animation.TYPE_TRANSFORM)
+				anim.track_set_path(track_idx, track_path)
+
+	redraw()
+
+
+func skeletons_under_node(node):
+	if node is Skeleton:
+		return [node]
+
+	var skeletons = []
+	for child in node.get_children():
+		skeletons.append_array(skeletons_under_node(child))
+
+	return skeletons
 
 
 func set_active_bone(prop_path):
@@ -116,7 +153,6 @@ func process_input(event):
 								res["skeleton"].get_bone_global_pose(res["bone_idx"]).origin
 							)
 
-
 							_state = EditorState.ROTATING
 							_state_info["starting_mouse_pos"] = _last_mouse_pos
 							_state_info["last_mouse_pos"] = _last_mouse_pos
@@ -126,6 +162,18 @@ func process_input(event):
 							consumed = true
 						else:
 							print("Can't start rotating when there's no active bone")
+
+			elif event is InputEventMouseButton and event.pressed:
+				match event.button_index:
+					BUTTON_LEFT:
+						var ui_bone = _nearest_ui_bone(event.position, 20.0)
+						if ui_bone:
+							_active_bone = ui_bone.path
+							# Need to redraw since the active bone changed
+							redraw()
+							consumed = true
+						else:
+							_active_bone = null
 
 			elif event is InputEventMouseMotion:
 				_last_mouse_pos = event.position
@@ -170,6 +218,8 @@ func process_input(event):
 				_state_info["last_mouse_pos"] = event.position
 
 				var rotation_amount = current_angle.angle_to(last_angle)
+				if Input.is_key_pressed(KEY_SHIFT):
+					rotation_amount *= 0.1
 
 				var skel: Skeleton = anim_player.get_node(anim_player.root_node).get_node(_state_info["active_bone"])
 				var prop_name = _state_info["active_bone"].get_concatenated_subnames()
@@ -196,7 +246,58 @@ func _process(delta):
 	update()
 
 
+func _ui_bones():
+	var ui_bones = []
+	if anim_player:
+		var current_animation = anim_player.assigned_animation
+		var anim = anim_player.get_animation(current_animation)
+		if anim:
+			for track_idx in range(anim.get_track_count()):
+				var path_to_bone = anim.track_get_path(track_idx)
+				var skel = anim_player.get_node(anim_player.root_node).get_node(path_to_bone)
+				var bone_name = path_to_bone.get_concatenated_subnames()
+				if skel is Skeleton:
+					var bone_idx = skel.find_bone(bone_name)
+					if skel.get_bone_parent(bone_idx) != -1:
+						var bone_xform = skel.global_transform * skel.get_bone_global_pose(bone_idx)
+						var bone_end = bone_xform.origin + bone_xform.basis.y * 0.25
+
+						var bone_start_screen_pos = camera.unproject_position(bone_xform.origin)
+						var bone_end_screen_pos = camera.unproject_position(bone_end)
+
+						ui_bones.append(
+							UIBone.new(
+								bone_start_screen_pos,
+								bone_end_screen_pos,
+								bone_name,
+								path_to_bone
+							)
+						)
+
+	return ui_bones
+
+
+func _nearest_ui_bone(point: Vector2, threshold: float):
+	var nearest_bone = null
+	var nearest_bone_distance = threshold
+	for bone in _ui_bones():
+		var closest_point = Geometry.get_closest_point_to_segment_2d(point, bone.start, bone.end)
+		var distance = (closest_point - point).length()
+		if distance <= nearest_bone_distance:
+			nearest_bone = bone
+			nearest_bone_distance = distance
+	return nearest_bone
+
+
 func _draw():
+	for bone in _ui_bones():
+		var width = 3.0
+		var color = Color.white
+		if bone.path == _active_bone:
+			color = Color.yellow
+		draw_line(bone.start, bone.end, color, width, true)
+		draw_string(get_default_font(), (bone.start+bone.end)/2, bone.name)
+
 	if anim_player and _active_bone and _state == EditorState.ROTATING:
 		var res = AnimationEditorUtils.skeleton_bone_from_path(
 			anim_player.get_node(anim_player.root_node),
@@ -207,7 +308,7 @@ func _draw():
 		var screen_pos = camera.unproject_position(global_pos)
 
 		draw_line(_state_info["last_mouse_pos"], screen_pos, Color.red)
-		draw_string(get_default_font(), Vector2(64, 64), str(_state_info["last_mouse_pos"]))
+		draw_string(get_default_font(), _state_info["last_mouse_pos"], str(_state_info["last_mouse_pos"]))
 
 
 func add_label(text):

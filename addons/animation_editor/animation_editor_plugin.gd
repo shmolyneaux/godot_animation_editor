@@ -23,9 +23,7 @@ func handles(object):
 	if _editor_panel.anim_player:
 		# We've previously selected an animation player, and these are presumably
 		# UI elements of the track editor for that player
-		if object.get_class() == "AnimationTrackKeyEdit":
-			return true
-		if object.get_class() == "AnimationMultiTrackKeyEdit":
+		if object.get_class() == "AnimationTrackKeyEdit" or object.get_class() == "AnimationMultiTrackKeyEdit":
 			return true
 
 	# User initially selects an AnimationPlayer Node
@@ -34,14 +32,15 @@ func handles(object):
 
 func edit(object):
 	if object is AnimationPlayer:
-		print("editing anim player")
 		_editor_panel.anim_player = object
+	elif object.get_class() == "AnimationTrackKeyEdit" or object.get_class() == "AnimationMultiTrackKeyEdit":
+		pass
 	else:
 		print("WEIRD: asked to edit ", object)
 
 
 func make_visible(show):
-	_editor_panel.visible = show
+	_editor_panel.visible = show and use_anim_editor_checked
 	if show:
 		_add_editor_menu_button()
 	else:
