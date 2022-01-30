@@ -12,7 +12,7 @@ While you're [waiting for Godot 4 skeletal animation editing](https://www.youtub
 - If the `root_node` of the animation player is a parent of a skeleton, you can press the "Add Bones Under Root" button to quickly add transform tracks for all bones that are descendants of the root node.
 
 ## Using the Animation Editor
-- Click on a bone to active it
+- Click on a bone to activate it
 - Use "R" to start rotate the bone
 - Use "G" to start grab the bone
 - Press the escape key to cancel the rotate/grab operation
