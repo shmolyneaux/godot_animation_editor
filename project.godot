@@ -8,11 +8,24 @@
 
 config_version=4
 
+_global_script_classes=[ {
+"base": "Reference",
+"class": "AnimationEditorUtils",
+"language": "GDScript",
+"path": "res://addons/animation_editor/AnimationEditorUtils.gd"
+} ]
+_global_script_class_icons={
+"AnimationEditorUtils": ""
+}
+
 [application]
 
 config/name="Animation Editor"
 run/main_scene="res://Scenes/Main.tscn"
-config/icon="res://icon.png"
+
+[autoload]
+
+DebugDraw="*res://addons/zylann.debug_draw/debug_draw.gd"
 
 [editor_plugins]
 

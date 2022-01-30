@@ -341,21 +341,20 @@ func _ui_bones():
 				var bone_name = path_to_bone.get_concatenated_subnames()
 				if skel is Skeleton:
 					var bone_idx = skel.find_bone(bone_name)
-					if skel.get_bone_parent(bone_idx) != -1:
-						var bone_xform = skel.global_transform * skel.get_bone_global_pose(bone_idx)
-						var bone_end = bone_xform.origin + bone_xform.basis.y * 0.25
+					var bone_xform = skel.global_transform * skel.get_bone_global_pose(bone_idx)
+					var bone_end = bone_xform.origin + bone_xform.basis.y * 0.25
 
-						var bone_start_screen_pos = camera.unproject_position(bone_xform.origin)
-						var bone_end_screen_pos = camera.unproject_position(bone_end)
+					var bone_start_screen_pos = camera.unproject_position(bone_xform.origin)
+					var bone_end_screen_pos = camera.unproject_position(bone_end)
 
-						ui_bones.append(
-							UIBone.new(
-								bone_start_screen_pos,
-								bone_end_screen_pos,
-								bone_name,
-								path_to_bone
-							)
+					ui_bones.append(
+						UIBone.new(
+							bone_start_screen_pos,
+							bone_end_screen_pos,
+							bone_name,
+							path_to_bone
 						)
+					)
 
 	return ui_bones
 

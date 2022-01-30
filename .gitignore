@@ -1,3 +1,6 @@
+Assets/
+Scenes/
+default_env.tres
 
 # Godot-specific ignores
 .import/
